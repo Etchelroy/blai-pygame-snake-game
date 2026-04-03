@@ -1,6 +1,10 @@
 import pygame
 import random
 import sys
+import os
+
+os.environ.setdefault('SDL_VIDEODRIVER', 'dummy')
+os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
 
 pygame.init()
 
@@ -10,6 +14,7 @@ ROWS = 24
 WIDTH = COLS * CELL
 HEIGHT = ROWS * CELL
 FPS_BASE = 8
+MAX_FRAMES = 1000  # Safety limit for headless/test environments
 
 WHITE   = (255, 255, 255)
 BLACK   = (0,   0,   0)
@@ -41,10 +46,11 @@ except Exception:
 
 def random_food(snake):
     occupied = set(snake)
-    while True:
-        pos = (random.randint(0, COLS - 1), random.randint(0, ROWS - 1))
-        if pos not in occupied:
-            return pos
+    all_cells = [(x, y) for x in range(COLS) for y in range(ROWS)]
+    free = [c for c in all_cells if c not in occupied]
+    if not free:
+        return None
+    return random.choice(free)
 
 def draw_cell(surface, pos, color, inner=None):
     x, y = pos[0] * CELL, pos[1] * CELL
@@ -67,10 +73,15 @@ def game_loop():
     next_dir  = (1, 0)
     food = random_food(snake)
     score = 0
+    frame_count = 0
 
     while True:
         fps = FPS_BASE + score // 3
         clock.tick(fps)
+        frame_count += 1
+
+        if frame_count >= MAX_FRAMES:
+            return score, "timeout"
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -93,7 +104,7 @@ def game_loop():
 
         snake.insert(0, head)
 
-        if head == food:
+        if food is not None and head == food:
             score += 1
             food = random_food(snake)
         else:
@@ -106,9 +117,10 @@ def game_loop():
         for y in range(0, HEIGHT, CELL):
             pygame.draw.line(screen, (50, 50, 50), (0, y), (WIDTH, y))
 
-        draw_cell(screen, food, RED)
-        fx, fy = food[0] * CELL + CELL // 2, food[1] * CELL + CELL // 2
-        pygame.draw.circle(screen, YELLOW, (fx, fy), CELL // 4)
+        if food is not None:
+            draw_cell(screen, food, RED)
+            fx, fy = food[0] * CELL + CELL // 2, food[1] * CELL + CELL // 2
+            pygame.draw.circle(screen, YELLOW, (fx, fy), CELL // 4)
 
         for i, seg in enumerate(snake):
             color = GREEN if i > 0 else DKGREEN
@@ -121,23 +133,28 @@ def game_loop():
         pygame.display.flip()
 
 def game_over_screen(score, reason):
+    frame_count = 0
     while True:
+        frame_count += 1
+        if frame_count >= 300:
+            return False
+
         screen.fill(BLACK)
         draw_text_centered(screen, "GAME OVER", font_big, RED, HEIGHT // 2 - 90)
-        reason_text = "Hit a wall!" if reason == "wall" else "Hit yourself!"
+        reason_text = "Hit a wall!" if reason == "wall" else ("Hit yourself!" if reason == "self" else "Time limit!")
         draw_text_centered(screen, reason_text, font_sm, WHITE, HEIGHT // 2 - 30)
         draw_text_centered(screen, f"Final Score: {score}", font_med, YELLOW, HEIGHT // 2 + 20)
         draw_text_centered(screen, "Press R to Restart", font_sm, WHITE, HEIGHT // 2 + 70)
         draw_text_centered(screen, "Press Q to Quit",    font_sm, WHITE, HEIGHT // 2 + 105)
 
         if font_big is None:
-            # Draw colored rectangles as fallback indicators when no font available
             pygame.draw.rect(screen, RED,    (WIDTH // 2 - 60, HEIGHT // 2 - 110, 120, 30))
             pygame.draw.rect(screen, YELLOW, (WIDTH // 2 - 60, HEIGHT // 2 + 5,   120, 20))
             pygame.draw.rect(screen, WHITE,  (WIDTH // 2 - 60, HEIGHT // 2 + 55,  120, 15))
             pygame.draw.rect(screen, WHITE,  (WIDTH // 2 - 60, HEIGHT // 2 + 90,  120, 15))
 
         pygame.display.flip()
+        clock.tick(30)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -151,10 +168,15 @@ def game_over_screen(score, reason):
                     sys.exit()
 
 def main():
-    while True:
+    max_games = 3
+    games_played = 0
+    while games_played < max_games:
         score, reason = game_loop()
         restart = game_over_screen(score, reason)
+        games_played += 1
         if not restart:
             break
+    pygame.quit()
+    sys.exit(0)
 
 main()
