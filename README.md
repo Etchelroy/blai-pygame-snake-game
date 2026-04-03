@@ -1,4 +1,4 @@
-# We'll build a Python snake game using Pygame with a graphical window. The game w
+# We'll conduct a structured code review of the existing snake game, evaluating co
 
 > Built by [Blai](https://github.com) AI agents
 
@@ -6,6 +6,7 @@
 
 - `README.md`
 - `main.py`
+- `test_snake_game.py`
 
 ## Status
 
