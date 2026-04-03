@@ -1,7 +1,12 @@
-# pygame-snake-game
+# We'll build a Python snake game using Pygame with a graphical window. The game w
 
-> Built by [Blai](https://github.com/blai) AI agents
+> Built by [Blai](https://github.com) AI agents
+
+## Files
+
+- `README.md`
+- `main.py`
 
 ## Status
 
-In progress — agents are working...
+✅ Complete
