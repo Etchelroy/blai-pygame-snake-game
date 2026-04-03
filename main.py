@@ -22,9 +22,22 @@ YELLOW  = (255, 220, 0)
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Snake")
 clock = pygame.time.Clock()
-font_big  = pygame.font.SysFont("monospace", 48, bold=True)
-font_med  = pygame.font.SysFont("monospace", 28)
-font_sm   = pygame.font.SysFont("monospace", 22)
+
+font_big = None
+font_med = None
+font_sm  = None
+
+try:
+    pygame.font.init()
+    if pygame.font.get_init():
+        default_font = pygame.font.get_default_font()
+        font_big = pygame.font.Font(default_font, 48)
+        font_med = pygame.font.Font(default_font, 28)
+        font_sm  = pygame.font.Font(default_font, 22)
+except Exception:
+    font_big = None
+    font_med = None
+    font_sm  = None
 
 def random_food(snake):
     occupied = set(snake)
@@ -40,12 +53,13 @@ def draw_cell(surface, pos, color, inner=None):
         pygame.draw.rect(surface, inner, (x + 2, y + 2, CELL - 4, CELL - 4))
 
 def draw_text_centered(surface, text, font, color, cy):
+    if font is None:
+        return
     surf = font.render(text, True, color)
     rect = surf.get_rect(center=(WIDTH // 2, cy))
     surface.blit(surf, rect)
 
 def game_loop():
-    # Initial state
     snake = [(COLS // 2, ROWS // 2),
              (COLS // 2 - 1, ROWS // 2),
              (COLS // 2 - 2, ROWS // 2)]
@@ -53,9 +67,8 @@ def game_loop():
     next_dir  = (1, 0)
     food = random_food(snake)
     score = 0
-    running = True
 
-    while running:
+    while True:
         fps = FPS_BASE + score // 3
         clock.tick(fps)
 
@@ -72,11 +85,9 @@ def game_loop():
         direction = next_dir
         head = (snake[0][0] + direction[0], snake[0][1] + direction[1])
 
-        # Wall collision
         if not (0 <= head[0] < COLS and 0 <= head[1] < ROWS):
             return score, "wall"
 
-        # Self collision
         if head in snake:
             return score, "self"
 
@@ -88,28 +99,24 @@ def game_loop():
         else:
             snake.pop()
 
-        # Draw
         screen.fill(GRAY)
 
-        # Grid lines (subtle)
         for x in range(0, WIDTH, CELL):
             pygame.draw.line(screen, (50, 50, 50), (x, 0), (x, HEIGHT))
         for y in range(0, HEIGHT, CELL):
             pygame.draw.line(screen, (50, 50, 50), (0, y), (WIDTH, y))
 
-        # Food
         draw_cell(screen, food, RED)
         fx, fy = food[0] * CELL + CELL // 2, food[1] * CELL + CELL // 2
         pygame.draw.circle(screen, YELLOW, (fx, fy), CELL // 4)
 
-        # Snake
         for i, seg in enumerate(snake):
             color = GREEN if i > 0 else DKGREEN
             draw_cell(screen, seg, color, DKGREEN if i == 0 else None)
 
-        # Score
-        score_surf = font_sm.render(f"Score: {score}  Speed: {fps}", True, WHITE)
-        screen.blit(score_surf, (8, 6))
+        if font_sm is not None:
+            score_surf = font_sm.render(f"Score: {score}  Speed: {fps}", True, WHITE)
+            screen.blit(score_surf, (8, 6))
 
         pygame.display.flip()
 
@@ -122,6 +129,14 @@ def game_over_screen(score, reason):
         draw_text_centered(screen, f"Final Score: {score}", font_med, YELLOW, HEIGHT // 2 + 20)
         draw_text_centered(screen, "Press R to Restart", font_sm, WHITE, HEIGHT // 2 + 70)
         draw_text_centered(screen, "Press Q to Quit",    font_sm, WHITE, HEIGHT // 2 + 105)
+
+        if font_big is None:
+            # Draw colored rectangles as fallback indicators when no font available
+            pygame.draw.rect(screen, RED,    (WIDTH // 2 - 60, HEIGHT // 2 - 110, 120, 30))
+            pygame.draw.rect(screen, YELLOW, (WIDTH // 2 - 60, HEIGHT // 2 + 5,   120, 20))
+            pygame.draw.rect(screen, WHITE,  (WIDTH // 2 - 60, HEIGHT // 2 + 55,  120, 15))
+            pygame.draw.rect(screen, WHITE,  (WIDTH // 2 - 60, HEIGHT // 2 + 90,  120, 15))
+
         pygame.display.flip()
 
         for event in pygame.event.get():
